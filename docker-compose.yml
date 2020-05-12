@@ -1,0 +1,53 @@
+version: "3"
+
+services:
+  db:
+    image: mysql:5.7
+    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+    volumes:
+      - ./volumes/db/var/lib/mysql:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=postman
+      - MYSQL_USER=postman_user
+      - MYSQL_PASSWORD=postman_password
+    ports:
+      - 3306:3306
+  app:
+    build:
+      context: app
+      args:
+         - edition=team
+    restart: unless-stopped
+    volumes:
+      - ./volumes/app/mattermost/config:/mattermost/config:rw
+      - ./volumes/app/mattermost/data:/mattermost/data:rw
+      - ./volumes/app/mattermost/logs:/mattermost/logs:rw
+      - ./volumes/app/mattermost/plugins:/mattermost/plugins:rw
+      - ./volumes/app/mattermost/client-plugins:/mattermost/client/plugins:rw
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - MM_USERNAME=postman_user
+      - MM_PASSWORD=postman_password
+      - MM_DBNAME=postman
+      - DB_PORT_NUMBER=3306
+      - MM_SQLSETTINGS_DRIVERNAME=mysql
+      - MM_SQLSETTINGS_DATASOURCE=postman_user:postman_password@tcp(db:3306)/postman?charset=utf8mb4,utf8\u0026readTimeout=30s\u0026writeTimeout=30s
+    ports:
+      - 8065:8000
+
+  web:
+    build: web
+    ports:
+      - "9005:80"
+      - "443:443"
+    read_only: true
+    restart: unless-stopped
+    volumes:
+      # This directory must have cert files if you want to enable SSL
+      - ./volumes/web/cert:/cert:ro
+      - /etc/localtime:/etc/localtime:ro
+    # Uncomment for SSL
+    # environment:
+    #  - MATTERMOST_ENABLE_SSL=true
